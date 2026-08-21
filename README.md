@@ -37,27 +37,27 @@ python scripts/download_example.py
 ```bash
 # Generate 6 evenly spaced views around the subject
 python inference.py \
-    --video_path "data/source/pexels/10331522-uhd_2160_4096_25fps.mp4" \
+    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 6
 
 # Generate 24 evenly spaced views around the subject
 python inference.py \
-    --video_path "data/source/pexels/10331522-uhd_2160_4096_25fps.mp4" \
+    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 24
 
 # Generate 48 views with 3 pitch layers and 16 views per layer
 python inference.py \
-    --video_path "data/source/pexels/10331522-uhd_2160_4096_25fps.mp4" \
+    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 16 --layer_pitches '[-10,15,35]'
 
 # Generate 8 views over the frontal 180-degree arc
 python inference.py \
-    --video_path "data/source/pexels/10331522-uhd_2160_4096_25fps.mp4" \
+    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 8 --start_yaw -90 --yaw_span 180
 
 # Generate one view at pitch 15° and yaw 60°
 python inference.py \
-    --video_path "data/source/pexels/10331522-uhd_2160_4096_25fps.mp4" \
+    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 1 --layer_pitches '[15]' --start_yaw 60
 ```
 
