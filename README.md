@@ -42,7 +42,7 @@ python inference.py \
     --views_per_layer 6
 ```
 
-<p align="left"><img src="docs/assets/inference-6-views.jpg" width="70%" alt="Six evenly spaced target cameras on one full orbit"></p>
+<p align="left"><img src="docs/assets/inference-6-views.jpg" width="800" alt="Six evenly spaced target cameras on one full orbit"></p>
 
 ### 24-view full orbit
 
@@ -54,7 +54,7 @@ python inference.py \
     --views_per_layer 24
 ```
 
-<p align="left"><img src="docs/assets/inference-24-views.jpg" width="70%" alt="Twenty-four evenly spaced target cameras on one full orbit"></p>
+<p align="left"><img src="docs/assets/inference-24-views.jpg" width="800" alt="Twenty-four evenly spaced target cameras on one full orbit"></p>
 
 ### 48-view, three pitch layers
 
@@ -66,7 +66,7 @@ python inference.py \
     --views_per_layer 16 --layer_pitches '[-10,15,35]'
 ```
 
-<p align="left"><img src="docs/assets/inference-48-views-3-layers.jpg" width="70%" alt="Forty-eight target cameras arranged over three pitch layers"></p>
+<p align="left"><img src="docs/assets/inference-48-views-3-layers.jpg" width="800" alt="Forty-eight target cameras arranged over three pitch layers"></p>
 
 ### 8-view frontal arc
 
@@ -78,7 +78,7 @@ python inference.py \
     --views_per_layer 8 --start_yaw -90 --yaw_span 180
 ```
 
-<p align="left"><img src="docs/assets/inference-8-views-front-180.jpg" width="70%" alt="Eight target cameras distributed over the frontal 180-degree arc"></p>
+<p align="left"><img src="docs/assets/inference-8-views-front-180.jpg" width="800" alt="Eight target cameras distributed over the frontal 180-degree arc"></p>
 
 ### Camera layout options
 
