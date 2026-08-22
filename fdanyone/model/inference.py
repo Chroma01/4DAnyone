@@ -250,17 +250,6 @@ def _load_rcp_reference_videos(frame_dirs: Iterable[Path], num_frames: int):
     return _rcp_reference_video_layout(frame_first_video)
 
 
-def _fill_rcp_reference_slots(latents):
-    """Match the checkpoint's fixed four-reference ViewPack input."""
-
-    count = latents.shape[0]
-    if count == 4:
-        return latents
-    if count == 1:
-        return latents.expand(4, *latents.shape[1:])
-    raise FourDAnyoneError(f"RCP must provide one or four reference latents, got {count}.")
-
-
 def _decode_rcp(
     pipe,
     latents,
@@ -470,10 +459,8 @@ def generate_views(
         # Match the reference JPEG-backed RCP boundary before the second VAE
         # encode; backing layout changes can otherwise select different BF16
         # CUDA kernels even when tensor values are identical.
-        reference_count = min(4, len(view_plan.rcp_camera_ids))
-        rcp_reference_videos = _load_rcp_reference_videos(frame_dirs[:reference_count], INFERENCE.num_frames)
+        rcp_reference_videos = _load_rcp_reference_videos(frame_dirs[:4], INFERENCE.num_frames)
         rcp_reference_latents = _encode_videos(pipe, rcp_reference_videos, device)
-        rcp_reference_latents = _fill_rcp_reference_slots(rcp_reference_latents)
         # VAE38 encodes batch elements independently, so the existing source
         # encoding is identical to re-encoding source plus the RCP references.
         target_sources = torch.cat([source_latents, rcp_reference_latents], dim=0)

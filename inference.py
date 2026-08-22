@@ -32,7 +32,8 @@ def inference(
 
     Args:
         video_path: Input video; it must contain at least 121 usable frames.
-        views_per_layer: Number of evenly spaced yaw views at each pitch.
+        views_per_layer: Number of evenly spaced yaw views at each pitch. It
+            must be divisible by 4 or 6.
         layer_pitches: Camera pitch for each layer in degrees, for example
             [-10,15,35]. Positive values place the camera above the subject;
             each value must be between -15 and 45.
@@ -40,8 +41,8 @@ def inference(
         yaw_span: Angular range sampled by each layer, from 1 to 360 degrees.
             The end angle is excluded so a full ring never duplicates a view.
         views_per_group: Maximum target views generated together. auto chooses
-            the largest divisor among 6, 4, and 1; a manual value must be 1,
-            4, or 6 and divide views_per_layer.
+            6 when possible and otherwise 4; a manual value must be 4 or 6 and
+            divide views_per_layer.
         enable_rcp: Use proposal views before generating more than six targets.
             The proposal count follows views_per_group.
         enable_tcr: Shift view groups between denoising steps. Partial yaw

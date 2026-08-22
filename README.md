@@ -32,39 +32,58 @@ python scripts/download_example.py
 
 ## Inference
 
-### Generate target views
+### 6-view full orbit
+
+A lightweight 360° layout for quick iteration.
 
 ```bash
-# Generate 6 evenly spaced views around the subject
 python inference.py \
     --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 6
+```
 
-# Generate 24 evenly spaced views around the subject
+<p align="left"><img src="docs/assets/inference-6-views.jpg" width="70%" alt="Six evenly spaced target cameras on one full orbit"></p>
+
+### 24-view full orbit
+
+A denser 360° layout for smoother angular coverage.
+
+```bash
 python inference.py \
     --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 24
+```
 
-# Generate 48 views with 3 pitch layers and 16 views per layer
+<p align="left"><img src="docs/assets/inference-24-views.jpg" width="70%" alt="Twenty-four evenly spaced target cameras on one full orbit"></p>
+
+### 48-view, three pitch layers
+
+Three pitch rings add vertical coverage around the subject.
+
+```bash
 python inference.py \
     --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 16 --layer_pitches '[-10,15,35]'
+```
 
-# Generate 8 views over the frontal 180-degree arc
+<p align="left"><img src="docs/assets/inference-48-views-3-layers.jpg" width="70%" alt="Forty-eight target cameras arranged over three pitch layers"></p>
+
+### 8-view frontal arc
+
+A frontal-only layout that concentrates views within a 180° arc.
+
+```bash
 python inference.py \
     --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
     --views_per_layer 8 --start_yaw -90 --yaw_span 180
-
-# Generate one view at pitch 15° and yaw 60°
-python inference.py \
-    --video_path "data/source/pexels/2785536-uhd_2160_3840_25fps.mp4" \
-    --views_per_layer 1 --layer_pitches '[15]' --start_yaw 60
 ```
 
-Camera layout options:
+<p align="left"><img src="docs/assets/inference-8-views-front-180.jpg" width="70%" alt="Eight target cameras distributed over the frontal 180-degree arc"></p>
+
+### Camera layout options
 
 - `layer_pitches`: pitch angle of each camera layer, in degrees; positive values place the cameras above the person.
-- `views_per_layer`: number of evenly spaced views in each camera layer. Total views are `views_per_layer × len(layer_pitches)`.
+- `views_per_layer`: number of evenly spaced views in each camera layer; it must be divisible by 4 or 6. Total views are `views_per_layer × len(layer_pitches)`.
 - `start_yaw`: horizontal angle of the first view, in degrees; yaw `0` is the front view.
 - `yaw_span`: horizontal range covered by each camera layer, in degrees.
 

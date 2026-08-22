@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from fdanyone.config import CAMERA
 from fdanyone.errors import ConfigurationError
 
-VALID_VIEWS_PER_GROUP = (1, 4, 6)
+VALID_VIEWS_PER_GROUP = (4, 6)
 MIN_PITCH = -15
 MAX_PITCH = 45
 
@@ -61,9 +61,7 @@ class ViewPlan:
 
     @property
     def tcr_active(self) -> bool:
-        # A one-view group has no cross-view context to rearrange. All other
-        # layouts honor enable_tcr, including partial yaw spans and one group.
-        return self.enable_tcr and self.views_per_group > 1
+        return self.enable_tcr
 
     @property
     def target_views(self) -> tuple[TargetView, ...]:
@@ -148,7 +146,10 @@ def _layer_pitches(value: object) -> tuple[int, ...]:
 def _group_size(value: int | str, views_per_layer: int) -> int:
     if isinstance(value, str):
         if value.lower() == "auto":
-            return max(size for size in VALID_VIEWS_PER_GROUP if views_per_layer % size == 0)
+            divisors = tuple(size for size in VALID_VIEWS_PER_GROUP if views_per_layer % size == 0)
+            if not divisors:
+                raise ConfigurationError(f"views_per_layer ({views_per_layer}) must be divisible by 4 or 6.")
+            return max(divisors)
         try:
             value = int(value)
         except ValueError:
