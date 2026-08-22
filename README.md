@@ -32,9 +32,11 @@ python scripts/download_example.py
 
 ## Inference
 
+4DAnyone supports flexible target-view counts, pitch layers, and yaw coverage. Here are several common camera configurations:
+
 ### 6-view full orbit
 
-A lightweight 360° layout for quick iteration.
+A compact 360° layout for basic coverage. Start here for an initial test.
 
 ```bash
 python inference.py \
@@ -46,7 +48,7 @@ python inference.py \
 
 ### 24-view full orbit
 
-A denser 360° layout for smoother angular coverage.
+A dense 360° layout with broad angular coverage, suitable for 4DGS reconstruction.
 
 ```bash
 python inference.py \
@@ -58,7 +60,7 @@ python inference.py \
 
 ### 48-view, three pitch layers
 
-Three pitch rings add vertical coverage around the subject.
+This layout distributes views across three pitch rings for broader coverage, enabling free-viewpoint 4DGS rendering.
 
 ```bash
 python inference.py \
@@ -70,7 +72,7 @@ python inference.py \
 
 ### 8-view frontal arc
 
-A frontal-only layout that concentrates views within a 180° arc.
+A focused layout for applications that only require front-side viewpoints.
 
 ```bash
 python inference.py \
@@ -80,14 +82,14 @@ python inference.py \
 
 <p align="left"><img src="docs/assets/inference-8-views-front-180.jpg" width="600" alt="Eight target cameras distributed over the frontal 180-degree arc"></p>
 
-### Camera layout options
+### Arguments
 
-- `layer_pitches`: pitch angle of each camera layer, in degrees; positive values place the cameras above the person.
-- `views_per_layer`: number of evenly spaced views in each camera layer; it must be divisible by 4 or 6. Total views are `views_per_layer × len(layer_pitches)`.
+Run `python inference.py --help` for the full list. Key camera-layout arguments are:
+
+- `views_per_layer`: number of evenly spaced views per pitch layer; must be divisible by 4 or 6.
+- `layer_pitches`: pitch angles in degrees, one per layer; positive values place cameras above the subject. Total views are `views_per_layer × len(layer_pitches)`.
 - `start_yaw`: horizontal angle of the first view, in degrees; yaw `0` is the front view.
 - `yaw_span`: horizontal range covered by each camera layer, in degrees.
-
-Run `python inference.py --help` to see all inference options.
 
 ### Output
 
@@ -107,12 +109,13 @@ data/
 
 ### Custom data
 
-Use a handheld-like video that:
+Use an input video that:
 
-- has a portrait 9:16 aspect ratio;
-- shows one person, either full body or upper body;
-- contains at least 121 frames;
-- has only mild camera movement.
+- is 720p or higher, with 1080p recommended;
+- uses a 9:16 portrait aspect ratio;
+- shows one person in a full-body or upper-body shot;
+- has at least 121 frames;
+- contains only mild camera motion.
 
 ## 3DGS Reconstruction
 
