@@ -31,21 +31,4 @@ All output videos contain 121 frames at 704×1280, use the selected output FPS, 
 
 ## Nerfstudio export
 
-Export one synchronized frame after inference:
-
-```bash
-python scripts/export_nerfstudio.py \
-    --result_dir data/fdanyone/<clip> \
-    --frame_index 60
-```
-
-This creates a Nerfstudio-ready dataset:
-
-```text
-data/nerfstudio/<clip>/frame_060/
-├── transforms.json
-├── images/00.jpg ... <N-1>.jpg
-└── masks/00.png ... <N-1>.png
-```
-
-Each export represents one static timestamp and can be passed directly to Nerfstudio.
+See the [3DGS reconstruction guide](nerfstudio.md) for details.

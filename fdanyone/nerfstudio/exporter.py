@@ -1,4 +1,4 @@
-"""Export one synchronized generated frame and its foreground masks for Nerfstudio."""
+"""Export synchronized 4DAnyone frames as directly trainable Nerfstudio data."""
 
 from __future__ import annotations
 
@@ -17,39 +17,16 @@ from fdanyone.download import ensure_foreground_model
 from fdanyone.errors import FourDAnyoneError
 from fdanyone.foreground import predict_foreground_masks
 from fdanyone.io import AtomicResultDirectory, write_json
+from fdanyone.nerfstudio.cameras import camera_to_nerfstudio
+from fdanyone.nerfstudio.visual_hull import (
+    NERFSTUDIO_POINT_CLOUD,
+    build_sparse_point_cloud,
+    write_sparse_point_cloud,
+)
 
-NERFSTUDIO_JPEG_QUALITY = 85
 # Nerfstudio casts mask pixels directly to bool, so soft BiRefNet predictions
 # must cross a real decision boundary before serialization.
 NERFSTUDIO_MASK_THRESHOLD = 128
-
-# 4DAnyone uses a right-handed Y-up world. Nerfstudio uses a right-handed
-# Z-up world, so rotate +Y onto +Z while keeping +X fixed.
-_Y_UP_TO_Z_UP = np.array(
-    [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 0.0, -1.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ],
-    dtype=np.float64,
-)
-
-# OpenCV camera axes are +X right, +Y down, +Z forward. Nerfstudio follows
-# OpenGL/Blender: +X right, +Y up, +Z back.
-_OPENCV_TO_OPENGL = np.diag([1.0, -1.0, -1.0, 1.0])
-
-
-def camera_to_nerfstudio(camera_to_world: object) -> list[list[float]]:
-    """Convert an OpenCV/Y-up camera-to-world matrix to OpenGL/Z-up."""
-
-    matrix = np.asarray(camera_to_world, dtype=np.float64)
-    if matrix.shape != (4, 4) or not np.isfinite(matrix).all():
-        raise FourDAnyoneError("Camera-to-world must be a finite 4x4 matrix.")
-    if not np.allclose(matrix[3], [0.0, 0.0, 0.0, 1.0]):
-        raise FourDAnyoneError("Camera-to-world must be a homogeneous transform.")
-    converted = _Y_UP_TO_Z_UP @ matrix @ _OPENCV_TO_OPENGL
-    return converted.tolist()
 
 
 def _read_cameras(result: Path) -> dict:
@@ -116,13 +93,26 @@ def _validate_raster(image: np.ndarray, camera: dict) -> None:
         )
 
 
-def _write_images(images: tuple[np.ndarray, ...], root: Path) -> None:
+def _write_images(images: tuple[np.ndarray, ...], binary_masks: np.ndarray, root: Path) -> None:
+    """Write RGBA inputs so Splatfacto supervises the background through alpha.
+
+    A separate Nerfstudio ``mask_path`` excludes masked pixels from the loss. It
+    therefore does not constrain Gaussians outside the silhouette. Keeping the
+    foreground mask as alpha instead lets Splatfacto composite a fresh training
+    background and penalize stray geometry everywhere in the image.
+    """
+
+    expected_shape = (len(images), *(images[0].shape[:2]))
+    if binary_masks.dtype != np.bool_ or binary_masks.shape != expected_shape:
+        raise FourDAnyoneError(f"RGBA alpha masks must be boolean with shape {expected_shape}.")
     root.mkdir()
     for camera_id, image in enumerate(images):
-        Image.fromarray(image).save(root / f"{camera_id:02d}.jpg", format="JPEG", quality=NERFSTUDIO_JPEG_QUALITY)
+        alpha = (binary_masks[camera_id] * 255).astype(np.uint8)[..., None]
+        rgba = np.concatenate([image, alpha], axis=2)
+        Image.fromarray(rgba, mode="RGBA").save(root / f"{camera_id:02d}.png", format="PNG")
 
 
-def _write_masks(masks: np.ndarray, images: tuple[np.ndarray, ...], root: Path) -> None:
+def _write_masks(masks: np.ndarray, images: tuple[np.ndarray, ...], root: Path) -> np.ndarray:
     expected_shape = (len(images), *(images[0].shape[:2]))
     if masks.dtype != np.uint8 or masks.shape != expected_shape:
         raise FourDAnyoneError(
@@ -131,11 +121,13 @@ def _write_masks(masks: np.ndarray, images: tuple[np.ndarray, ...], root: Path) 
         )
 
     root.mkdir()
-    for camera_id, mask in enumerate(masks):
-        binary = np.where(mask >= NERFSTUDIO_MASK_THRESHOLD, 255, 0).astype(np.uint8)
+    binary_masks = masks >= NERFSTUDIO_MASK_THRESHOLD
+    for camera_id in range(len(masks)):
+        binary = binary_masks[camera_id]
         if not np.any(binary):
             raise FourDAnyoneError(f"BiRefNet found no foreground in camera {camera_id:02d}.")
-        Image.fromarray(binary).save(root / f"{camera_id:02d}.png", format="PNG")
+        Image.fromarray((binary * 255).astype(np.uint8)).save(root / f"{camera_id:02d}.png", format="PNG")
+    return binary_masks
 
 
 def _transforms(cameras: list[dict]) -> dict:
@@ -152,8 +144,7 @@ def _transforms(cameras: list[dict]) -> dict:
             raise FourDAnyoneError(f"Camera {camera_id:02d} has invalid image dimensions.") from exc
         frames.append(
             {
-                "file_path": f"images/{camera_id:02d}.jpg",
-                "mask_path": f"masks/{camera_id:02d}.png",
+                "file_path": f"images/{camera_id:02d}.png",
                 "fl_x": float(intrinsic[0, 0]),
                 "fl_y": float(intrinsic[1, 1]),
                 "cx": float(intrinsic[0, 2]),
@@ -163,7 +154,11 @@ def _transforms(cameras: list[dict]) -> dict:
                 "transform_matrix": camera_to_nerfstudio(camera.get("camera_to_world")),
             }
         )
-    return {"camera_model": "OPENCV", "frames": frames}
+    return {
+        "camera_model": "OPENCV",
+        "ply_file_path": NERFSTUDIO_POINT_CLOUD,
+        "frames": frames,
+    }
 
 
 def export_nerfstudio(
@@ -173,7 +168,7 @@ def export_nerfstudio(
     model_dir: str = "models",
     device: str = "cuda:0",
 ) -> dict:
-    """Export one masked multi-view timestamp for direct Nerfstudio training.
+    """Export one masked multi-view timestamp and visual hull for Nerfstudio.
 
     Args:
         result_dir: A completed data/fdanyone/<clip> result.
@@ -205,13 +200,16 @@ def export_nerfstudio(
         images = tuple(_extract_frame(video, frame_index) for video in videos)
         for image, camera in zip(images, cameras, strict=True):
             _validate_raster(image, camera)
-        _write_images(images, work / "images")
 
         device, _ = select_cuda_device(device)
         ensure_foreground_model(model_dir)
         foreground_model = resolve_foreground_model(model_dir)
         masks = predict_foreground_masks(images, foreground_model, device)
-        _write_masks(masks, images, work / "masks")
+        binary_masks = _write_masks(masks, images, work / "masks")
+        _write_images(images, binary_masks, work / "images")
+        del foreground_model
+        points, colors = build_sparse_point_cloud(images, binary_masks, cameras, device)
+        write_sparse_point_cloud(work / NERFSTUDIO_POINT_CLOUD, points, colors)
         write_json(work / "transforms.json", transforms, sort_keys=False)
 
     return {
@@ -219,4 +217,5 @@ def export_nerfstudio(
         "frame_index": frame_index,
         "num_images": len(cameras),
         "num_masks": len(cameras),
+        "num_points": len(points),
     }

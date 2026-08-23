@@ -31,7 +31,9 @@ from fdanyone.assets import (
     HF_REPO_ID,
     HF_REVISION,
     MODEL_FILES,
+    PERCEPTUAL_VGG19,
     SMPLX_MODEL,
+    resolve_perceptual_vgg19,
 )
 from fdanyone.errors import AssetError
 
@@ -151,6 +153,17 @@ def ensure_models(
     ensure_foreground_model(models)
     create_classic_gvhmr_links(models, gvhmr_root, require_smplx=False)
     return models
+
+
+def ensure_perceptual_vgg19(model_dir: str | Path = "models") -> Path:
+    """Download only the optional VGG-19 reconstruction asset when missing."""
+
+    models = Path(model_dir).expanduser().resolve()
+    destination = models / PERCEPTUAL_VGG19
+    if not destination.is_file():
+        LOGGER.info("Downloading the perceptual VGG-19 model (first use only)")
+        _snapshot([PERCEPTUAL_VGG19], models)
+    return resolve_perceptual_vgg19(models)
 
 
 def download_model(

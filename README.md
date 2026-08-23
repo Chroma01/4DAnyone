@@ -119,19 +119,7 @@ Use an input video that:
 
 ## 3DGS Reconstruction
 
-Install [Nerfstudio](https://docs.nerf.studio/quickstart/installation.html) before running `ns-train`.
-
-```bash
-# Export frame 0 across all generated views
-python scripts/export_nerfstudio.py \
-    --result_dir data/fdanyone/<clip> \
-    --frame_index 0
-
-# Train foreground-only 3DGS
-ns-train splatfacto \
-    --data data/nerfstudio/<clip>/frame_000 \
-    --pipeline.model.background-color random
-```
+See the [nerfstudio guide](docs/nerfstudio.md) for details.
 
 ## Todos
 

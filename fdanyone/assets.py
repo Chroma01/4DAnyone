@@ -13,7 +13,7 @@ from pathlib import Path
 from fdanyone.errors import AssetError
 
 HF_REPO_ID = "AntResearch/4DAnyone"
-HF_REVISION = "eab457d2761b15c7fe7b7b05484ae75a94119677"
+HF_REVISION = "7850985888b56aabf09e69480b73248f1a76bcbe"
 
 BIREFNET_REPO_ID = "ZhengPeng7/BiRefNet"
 BIREFNET_REVISION = "e2bf8e4460fc8fa32bba5ea4d94b3233d367b0e4"
@@ -39,6 +39,7 @@ GVHMR_CHECKPOINT = "gvhmr/gvhmr_siga24_release.ckpt"
 HMR2_CHECKPOINT = "gvhmr/epoch=10-step=25000.ckpt"
 VITPOSE_CHECKPOINT = "gvhmr/vitpose-h-multi-coco.pth"
 YOLO_CHECKPOINT = "gvhmr/yolov8x.pt"
+PERCEPTUAL_VGG19 = "perceptual/imagenet-vgg-verydeep-19-conv.safetensors"
 
 SMPLX_MODEL = "body_models/smplx/SMPLX_NEUTRAL.npz"
 
@@ -52,6 +53,7 @@ MODEL_FILES = (
     HMR2_CHECKPOINT,
     VITPOSE_CHECKPOINT,
     YOLO_CHECKPOINT,
+    PERCEPTUAL_VGG19,
 )
 
 EXAMPLE_FILES = (
@@ -113,6 +115,16 @@ def resolve_foreground_model(model_dir: str | Path = "models") -> Path:
     for relative in BIREFNET_FILES:
         _require_file(root / relative, "BiRefNet file", "scripts/download_model.py")
     return root.resolve()
+
+
+def resolve_perceptual_vgg19(model_dir: str | Path = "models") -> Path:
+    """Resolve the converted VGG-19 weights used by perceptual reconstruction."""
+
+    return _require_file(
+        Path(model_dir) / PERCEPTUAL_VGG19,
+        "Perceptual VGG-19 weights",
+        "scripts/download_model.py",
+    )
 
 
 def resolve_base_assets(model_dir: str | Path = "models") -> BaseAssets:
