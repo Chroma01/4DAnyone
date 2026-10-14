@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import errno
-import fcntl
 import hashlib
 import json
 import os
@@ -15,7 +14,37 @@ from pathlib import Path
 
 from fdanyone.errors import FourDAnyoneError
 
-_RETRYABLE_TREE_ERRORS = {errno.EBUSY, errno.ENOTEMPTY, errno.ESTALE}
+_RETRYABLE_TREE_ERRORS = {getattr(errno, name) for name in ("EBUSY", "ENOTEMPTY", "ESTALE") if hasattr(errno, name)}
+
+
+def _open_output_lock(path: Path) -> int:
+    flags = os.O_CREAT | os.O_RDWR
+    if os.name == "nt":
+        # Best-effort path check, not the atomic no-follow guarantee used on POSIX.
+        if path.is_symlink():
+            raise OSError(errno.ELOOP, "Output lock must not be a symlink", str(path))
+    else:
+        flags |= os.O_NOFOLLOW
+    descriptor = os.open(path, flags, 0o666)
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            try:
+                # The first byte can be locked even when the sidecar is empty.
+                msvcrt.locking(descriptor, msvcrt.LK_NBLCK, 1)
+            except OSError as exc:
+                if exc.errno in (errno.EACCES, errno.EAGAIN):
+                    raise BlockingIOError(exc.errno, "Output lock is already held", str(path)) from exc
+                raise
+        else:
+            import fcntl
+
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
 
 
 def resolve_output_path(path: str | Path) -> Path:
@@ -32,15 +61,15 @@ def lock_output(path: Path):
     Keep the empty lock file outside the output directory and never unlink it: replacing
     its inode could let concurrent writers acquire different locks. The OS
     releases the lock on process exit, including SIGKILL.
+    Windows uses a nonblocking byte-range lock and a best-effort symlink check.
     """
 
     lock_path = path.with_name(f".{path.name}.lock")
-    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o666)
     try:
-        try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
-            raise FourDAnyoneError(f"Another inference run is using {path}.") from exc
+        descriptor = _open_output_lock(lock_path)
+    except BlockingIOError as exc:
+        raise FourDAnyoneError(f"Another inference run is using {path}.") from exc
+    try:
         yield
     finally:
         os.close(descriptor)
